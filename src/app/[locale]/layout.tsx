@@ -3,6 +3,7 @@ import {getMessages, setRequestLocale} from 'next-intl/server';
 import {notFound} from 'next/navigation';
 import {routing} from '@/i18n/routing';
 import {DashboardLayout} from '@/components/DashboardLayout';
+import {QueryProvider} from '@/providers/QueryProvider';
 import '../globals.css';
 
 export default async function LocaleLayout({
@@ -26,9 +27,11 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body className="antialiased bg-slate-900 text-white">
         <NextIntlClientProvider messages={messages}>
-          <DashboardLayout>
-            {children}
-          </DashboardLayout>
+          <QueryProvider>
+            <DashboardLayout>
+              {children}
+            </DashboardLayout>
+          </QueryProvider>
         </NextIntlClientProvider>
       </body>
     </html>

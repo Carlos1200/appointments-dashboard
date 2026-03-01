@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { X, Calendar as CalendarIcon, Clock, Phone, User, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import clsx from 'clsx';
 import { useTranslations } from 'next-intl';
+import { useCreateAppointment } from '@/hooks/useAppointments';
 
 interface CreateAppointmentModalProps {
   isOpen: boolean;
@@ -13,19 +13,37 @@ interface CreateAppointmentModalProps {
 }
 
 export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppointmentModalProps) {
-  // Use translations if available, or fallback to ternary values
   const isEs = locale === 'es';
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { mutateAsync: createAppointment, status } = useCreateAppointment();
+  const isSubmitting = status === 'pending';
+
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    date: '',
+    time: '',
+    notes: ''
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    // Simulate n8n webhook call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await createAppointment({
+        patient_name: formData.name,
+        patient_phone: formData.phone,
+        date: formData.date,
+        time: formData.time,
+        notes: formData.notes,
+        status: 'pending',
+        source: 'Manual'
+      });
+      // Cleanup for next open
+      setFormData({ name: '', phone: '', date: '', time: '', notes: '' });
       onClose();
-    }, 1500);
+    } catch (error) {
+      console.error('Error inserting appointment:', error);
+      alert('Error saving appointment. Try again.');
+    }
   };
 
   return (
@@ -69,6 +87,8 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                       <input
                         required
                         type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                         placeholder="John Doe"
                       />
@@ -83,6 +103,8 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                       <input
                         required
                         type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                         placeholder="+1 (555) 000-0000"
                       />
@@ -100,6 +122,8 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                       <input
                         required
                         type="date"
+                        value={formData.date}
+                        onChange={(e) => setFormData({...formData, date: e.target.value})}
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all [color-scheme:dark]"
                       />
                     </div>
@@ -110,7 +134,12 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                     </label>
                     <div className="relative">
                       <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                      <select required className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer">
+                      <select 
+                        required 
+                        value={formData.time}
+                        onChange={(e) => setFormData({...formData, time: e.target.value})}
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
+                      >
                         <option value="">{isEs ? 'Seleccionar hora' : 'Select time'}</option>
                         <option value="09:00">09:00 AM</option>
                         <option value="10:00">10:00 AM</option>
@@ -132,6 +161,8 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                   <FileText className="absolute left-3 top-3 text-slate-500 w-4 h-4" />
                   <textarea
                     rows={3}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                     placeholder={isEs ? 'Cualquier detalle importante para la cita...' : 'Any important details for the appointment...'}
                   />
