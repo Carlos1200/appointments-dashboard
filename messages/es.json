@@ -1,0 +1,30 @@
+{
+    "Settings": {
+        "title": "Configuraciones e Integraciones",
+        "language": "Idioma de la Aplicación",
+        "save": "Guardar Preferencias"
+    },
+    "Dashboard": {
+        "title": "Panel de Control"
+    },
+    "Sidebar": {
+        "home": "Inicio",
+        "appointments": "Citas",
+        "settings": "Configuraciones",
+        "title": "Panel Administrativo",
+        "role": "Admin",
+        "practice": "Clínica Médica"
+    },
+    "Status": {
+        "in_progress": "En Progreso",
+        "confirmed": "Confirmada",
+        "pending": "Pendiente",
+        "cancelled": "Cancelada"
+    },
+    "Type": {
+        "check_up": "Chequeo",
+        "consultation": "Consulta",
+        "follow_up": "Seguimiento",
+        "test_results": "Resultados"
+    }
+}

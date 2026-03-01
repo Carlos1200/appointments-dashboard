@@ -1,0 +1,30 @@
+{
+    "Settings": {
+        "title": "Settings & Integrations",
+        "language": "Application Language",
+        "save": "Save Preferences"
+    },
+    "Dashboard": {
+        "title": "Dashboard Home"
+    },
+    "Sidebar": {
+        "home": "Home",
+        "appointments": "Appointments",
+        "settings": "Settings",
+        "title": "Admin Dashboard",
+        "role": "Admin",
+        "practice": "Medical Practice"
+    },
+    "Status": {
+        "in_progress": "In-Progress",
+        "confirmed": "Confirmed",
+        "pending": "Pending",
+        "cancelled": "Cancelled"
+    },
+    "Type": {
+        "check_up": "Check-up",
+        "consultation": "Consultation",
+        "follow_up": "Follow-up",
+        "test_results": "Test Results"
+    }
+}
