@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Appointments Dashboard 🗓️
 
-## Getting Started
+A modern, responsive, and internationalized (i18n) administrative dashboard built with Next.js App Router for managing medical appointments and AI-driven call agents.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Modern Architecture**: Built with Next.js 16 (App Router) and React.
+- **Premium UI**: Styled with Tailwind CSS v4, featuring a Dark Mode aesthetic and Glassmorphism components.
+- **Smooth Animations**: Powered by `framer-motion` for fluid modal transitions and sidebar interactions.
+- **Internationalization (i18n)**: Native multi-language support out-of-the-box (`next-intl`), with Spanish (`es`) as the default language and English (`en`) as the fallback.
+- **Responsive Design**: Designed Mobile-First but scales natively to Desktop views for medical administrative desks.
+- **Automation Ready**: Prepared interfaces to hook via Webhooks to **n8n** workflows for triggering external services like Google Calendar.
+- **AI Integration Config**: Included settings panel to manage optional settings and API configurations for **RetellAI** agents.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Tailwind CSS v4
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **i18n**: next-intl
+- **Linting & Formatting**: ESLint + Prettier standards
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📥 Getting Started
 
-## Learn More
+### Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+You need Node.js 18.17+ installed on your machine.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Carlos1200/appointments-dashboard.git
+   cd appointments-dashboard
+   ```
 
-## Deploy on Vercel
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## 📂 Project Structure
+
+- `/src/app/[locale]`: Contains the Next.js page routes, separated by the locale path for proper generic i18n support.
+- `/src/components`: Reusable UI components like `Sidebar`, `DashboardLayout`, and `CreateAppointmentModal`.
+- `/src/i18n`: Configuration files and middleware for `next-intl`.
+- `/messages`: JSON translation dictionaries (`es.json`, `en.json`).
+
+## 🔗 n8n & RetellAI Workflow (Context)
+
+This application serves as the visual administrative interface and the entry point for data. It is intended to complement an backend automation layer managed by **n8n**. 
+
+- **Creating an Appointment**: When a user submits an appointment via this dashboard, it sends a payload to an n8n webhook.
+- n8n then manages the creation of the event in Google Calendar and optional scheduling/parameter adjusting within a [RetellAI](https://retellai.com/) agent.
+- **Database (TBD)**: It is recommended to use Supabase, Firebase, or MongoDB in conjunction with n8n to persist historical records (especially those created autonomously by RetellAI via phone calls) to populate the *Appointments List* dynamically.
+
+## 📄 License
+
+This project is licensed under the MIT License.
