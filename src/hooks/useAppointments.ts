@@ -24,6 +24,10 @@ export interface CreateAppointmentDTO {
   source: string;
 }
 
+export interface UpdateAppointmentDTO extends Partial<CreateAppointmentDTO> {
+  id: string;
+}
+
 // 1. Hook para OBTENER las citas (Read)
 export function useAppointments() {
   return useQuery<Appointment[], Error>({
@@ -62,6 +66,32 @@ export function useCreateAppointment() {
       return data;
     },
     // Al concluir, invalidamos la caché para que la tabla se refresque instantáneamente
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    },
+  });
+}
+
+// 3. Hook para ACTUALIZAR una cita (Update)
+export function useUpdateAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updatedAppointment: UpdateAppointmentDTO) => {
+      const { id, ...updates } = updatedAppointment;
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+        
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
     },

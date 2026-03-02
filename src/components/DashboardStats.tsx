@@ -3,17 +3,22 @@
 import { Calendar, TrendingUp, PhoneCall } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import clsx from 'clsx';
+import { Appointment } from '@/hooks/useAppointments';
 
-export function DashboardStats() {
+interface DashboardStatsProps {
+  appointments: Appointment[];
+}
+
+export function DashboardStats({ appointments }: DashboardStatsProps) {
   const locale = useLocale();
   const isEs = locale === 'es';
 
-  // Estos datos podrían venir de un custom hook también (ej: useStats())
+  // Estos datos vendrían de un custom hook o props
   const stats = [
     {
       title: isEs ? 'Citas de Hoy' : "Today's Appointments",
-      value: '24',
-      trend: '+12%',
+      value: appointments.length.toString(),
+      trend: appointments.length > 0 ? '+1' : '0',
       trendUp: true,
       icon: Calendar,
       color: 'blue'

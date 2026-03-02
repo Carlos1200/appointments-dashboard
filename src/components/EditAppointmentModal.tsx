@@ -1,22 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Calendar as CalendarIcon, Clock, Phone, User, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { sileo } from 'sileo';
-import { useCreateAppointment } from '@/hooks/useAppointments';
+import { useUpdateAppointment, Appointment } from '@/hooks/useAppointments';
 
-interface CreateAppointmentModalProps {
+interface EditAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   locale: string;
+  appointment: Appointment | null;
 }
 
-export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppointmentModalProps) {
+export function EditAppointmentModal({ isOpen, onClose, locale, appointment }: EditAppointmentModalProps) {
   const isEs = locale === 'es';
-  const { mutateAsync: createAppointment, status } = useCreateAppointment();
+  const { mutateAsync: updateAppointment, status } = useUpdateAppointment();
   const isSubmitting = status === 'pending';
+  const [mounted, setMounted] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -26,31 +29,49 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
     notes: ''
   });
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Pre-fill form when appointment changes
+  useEffect(() => {
+    if (appointment) {
+      setFormData({
+        name: appointment.patient_name || '',
+        phone: appointment.patient_phone || '',
+        date: appointment.date || '',
+        // Format time to HH:mm for the select input if needed, though the DB might already store HH:mm
+        time: appointment.time?.substring(0, 5) || '',
+        notes: appointment.notes || ''
+      });
+    }
+  }, [appointment]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!appointment) return;
+
     try {
-      await createAppointment({
+      await updateAppointment({
+        id: appointment.id,
         patient_name: formData.name,
         patient_phone: formData.phone,
         date: formData.date,
         time: formData.time,
         notes: formData.notes,
-        status: 'pending',
-        source: 'Manual'
       });
-      // Cleanup for next open
-      setFormData({ name: '', phone: '', date: '', time: '', notes: '' });
+      sileo.success({ title: isEs ? 'Cita actualizada rectamente' : 'Appointment updated successfully' });
       onClose();
     } catch (error) {
-      console.error('Error inserting appointment:', error);
-      sileo.error({ title: isEs ? 'Error al guardar la cita. Intenta de nuevo.' : 'Error saving appointment. Try again.' });
+      console.error('Error updating appointment:', error);
+      sileo.error({ title: isEs ? 'Error actualizando la cita. Intenta de nuevo.' : 'Error updating appointment. Try again.' });
     }
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {isOpen && appointment && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -66,7 +87,7 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
           >
             <div className="flex items-center justify-between p-6 border-b border-slate-800/60">
               <h2 className="text-xl font-semibold text-white">
-                {isEs ? 'Crear Nueva Cita' : 'Create New Appointment'}
+                {isEs ? 'Editar Cita' : 'Edit Appointment'}
               </h2>
               <button
                 onClick={onClose}
@@ -181,12 +202,12 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                   ) : null}
-                  {isEs ? 'Guardar Cita' : 'Save Appointment'}
+                  {isEs ? 'Guardar Cambios' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -195,4 +216,7 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
       )}
     </AnimatePresence>
   );
+
+  if (!mounted) return null;
+  return createPortal(modalContent, document.body);
 }

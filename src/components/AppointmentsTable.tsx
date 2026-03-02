@@ -2,8 +2,10 @@
 
 import { Search, MoreVertical } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { Appointment } from '@/hooks/useAppointments';
+import { AppointmentActions } from './AppointmentActions';
 
 interface AppointmentsTableProps {
   appointments: Appointment[];
@@ -11,6 +13,9 @@ interface AppointmentsTableProps {
 }
 
 export function AppointmentsTable({ appointments, isLoading }: AppointmentsTableProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const locale = useLocale();
   const isEs = locale === 'es';
   const tStatus = useTranslations('Status');
@@ -51,18 +56,29 @@ export function AppointmentsTable({ appointments, isLoading }: AppointmentsTable
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
           <input 
             type="text" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={isEs ? 'Buscar pacientes, fechas...' : 'Search patients, dates...'} 
             className="pl-10 pr-4 py-2 bg-slate-950/50 border border-slate-800/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-200 placeholder-slate-500 w-full"
           />
         </div>
-        <div className="flex gap-3">
-          <select className="px-4 py-2 bg-slate-950/50 border border-slate-800/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-300 appearance-none min-w-[120px]">
+        <div className="flex gap-3 text-slate-300">
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 bg-slate-950/50 border border-slate-800/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none min-w-[120px] cursor-pointer"
+          >
             <option value="">Status</option>
-            <option value="Confirmed">{tStatus('confirmed')}</option>
-            <option value="Pending">{tStatus('pending')}</option>
-            <option value="Cancelled">{tStatus('cancelled')}</option>
+            <option value="confirmed">{tStatus('confirmed')}</option>
+            <option value="pending">{tStatus('pending')}</option>
+            <option value="cancelled">{tStatus('cancelled')}</option>
+            <option value="in_progress">{tStatus('in_progress')}</option>
           </select>
-          <select className="px-4 py-2 bg-slate-950/50 border border-slate-800/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-300 appearance-none min-w-[120px]">
+          <select 
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="px-4 py-2 bg-slate-950/50 border border-slate-800/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none min-w-[120px] cursor-pointer"
+          >
             <option value="">{isEs ? 'Fuente' : 'Source'}</option>
             <option value="Manual">Manual</option>
             <option value="RetellAI">RetellAI</option>
@@ -71,81 +87,95 @@ export function AppointmentsTable({ appointments, isLoading }: AppointmentsTable
         </div>
       </div>
       
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-slate-800/60 bg-slate-800/20 text-slate-400 text-sm">
-              <th className="px-6 py-4 font-medium">{isEs ? 'Paciente' : 'Patient'}</th>
-              <th className="px-6 py-4 font-medium">{isEs ? 'Fecha' : 'Date'}</th>
-              <th className="px-6 py-4 font-medium">{isEs ? 'Hora' : 'Time'}</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium">{isEs ? 'Fuente' : 'Source'}</th>
-              <th className="px-6 py-4 font-medium text-right">{isEs ? 'Acciones' : 'Actions'}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60 text-sm">
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                  <div className="flex flex-col items-center justify-center">
-                    <span className="w-8 h-8 border-2 border-slate-600 border-t-blue-500 rounded-full animate-spin mb-4" />
-                    {isEs ? 'Cargando citas...' : 'Loading appointments...'}
-                  </div>
-                </td>
-              </tr>
-            ) : appointments.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                  {isEs ? 'No hay citas registradas.' : 'No appointments scheduled.'}
-                </td>
-              </tr>
-            ) : (
-              appointments.map((apt) => {
-                let color = 'cyan';
-                if(apt.status === 'confirmed') color = 'emerald';
-                if(apt.status === 'pending') color = 'amber';
-                if(apt.status === 'cancelled') color = 'rose';
-                
-                let srcColor = 'slate';
-                if(apt.source === 'RetellAI') srcColor = 'indigo';
-                if(apt.source === 'n8n') srcColor = 'pink';
+      {/* Filtering Logic placed here for brevity, mapped in table body below */}
+      {(() => {
+        const filteredAppointments = appointments.filter(apt => {
+          const matchSearch = searchTerm === '' || 
+            apt.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            apt.date?.includes(searchTerm);
+            
+          const matchStatus = statusFilter === '' || apt.status === statusFilter;
+          const matchSource = sourceFilter === '' || apt.source === sourceFilter;
+          
+          return matchSearch && matchStatus && matchSource;
+        });
 
-                const initials = apt.patient_name ? apt.patient_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : '??';
-
-                return (
-                  <tr key={apt.id} className="hover:bg-slate-800/30 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white shadow-inner mr-3 group-hover:ring-2 ring-slate-700 transition-all">
-                          {initials}
-                        </div>
-                        <span className="font-medium text-slate-200">{apt.patient_name}</span>
+        return (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800/60 bg-slate-800/20 text-slate-400 text-sm">
+                  <th className="px-6 py-4 font-medium">{isEs ? 'Paciente' : 'Patient'}</th>
+                  <th className="px-6 py-4 font-medium">{isEs ? 'Fecha' : 'Date'}</th>
+                  <th className="px-6 py-4 font-medium">{isEs ? 'Hora' : 'Time'}</th>
+                  <th className="px-6 py-4 font-medium">Status</th>
+                  <th className="px-6 py-4 font-medium">{isEs ? 'Fuente' : 'Source'}</th>
+                  <th className="px-6 py-4 font-medium text-right">{isEs ? 'Acciones' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-sm">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="w-8 h-8 border-2 border-slate-600 border-t-blue-500 rounded-full animate-spin mb-4" />
+                        {isEs ? 'Cargando citas...' : 'Loading appointments...'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-400">
-                      {apt.date}
-                    </td>
-                    <td className="px-6 py-4 text-slate-300 font-medium">
-                      {apt.time}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(tStatus(apt.status || 'in_progress'), color)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getSourceBadge(apt.source || 'Manual', srcColor)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-slate-500 hover:text-slate-300 p-1 rounded-md hover:bg-slate-800 transition-colors">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                  </tr>
+                ) : filteredAppointments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      {isEs ? 'No se encontraron citas con estos filtros.' : 'No appointments found with these filters.'}
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                ) : (
+                  filteredAppointments.map((apt) => {
+                    let color = 'cyan';
+                    if(apt.status === 'confirmed') color = 'emerald';
+                    if(apt.status === 'pending') color = 'amber';
+                    if(apt.status === 'cancelled') color = 'rose';
+                    
+                    let srcColor = 'slate';
+                    if(apt.source === 'RetellAI') srcColor = 'indigo';
+                    if(apt.source === 'n8n') srcColor = 'pink';
+
+                    const initials = apt.patient_name ? apt.patient_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : '??';
+
+                    return (
+                      <tr key={apt.id} className="hover:bg-slate-800/30 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white shadow-inner mr-3 group-hover:ring-2 ring-slate-700 transition-all">
+                              {initials}
+                            </div>
+                            <span className="font-medium text-slate-200">{apt.patient_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-400">
+                          {apt.date}
+                        </td>
+                        <td className="px-6 py-4 text-slate-300 font-medium">
+                          {apt.time}
+                        </td>
+                        <td className="px-6 py-4">
+                          {getStatusBadge(tStatus(apt.status || 'in_progress'), color)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {getSourceBadge(apt.source || 'Manual', srcColor)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <AppointmentActions appointment={apt} />
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
     </div>
   );
 }
