@@ -3,8 +3,10 @@
 import { MoreVertical } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import clsx from 'clsx';
+import { useState } from 'react';
 import { Appointment } from '@/hooks/useAppointments';
 import { AppointmentActions } from './AppointmentActions';
+import { PatientSlideOver } from './PatientSlideOver';
 
 interface UpcomingAppointmentsProps {
   appointments: Appointment[];
@@ -13,6 +15,7 @@ interface UpcomingAppointmentsProps {
 }
 
 export function UpcomingAppointments({ appointments, isLoading, searchTerm }: UpcomingAppointmentsProps) {
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const locale = useLocale();
   const isEs = locale === 'es';
   const tType = useTranslations('Type');
@@ -38,14 +41,16 @@ export function UpcomingAppointments({ appointments, isLoading, searchTerm }: Up
   const filtered = appointments.filter((apt) => {
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
+    const fullName = `${apt.patients?.first_name || ''} ${apt.patients?.last_name || ''}`.trim();
     return (
-      apt.patient_name?.toLowerCase().includes(s) ||
+      fullName.toLowerCase().includes(s) ||
       apt.source?.toLowerCase().includes(s)
     );
   });
 
   return (
-    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 backdrop-blur-xl overflow-hidden shadow-2xl">
+    <>
+      <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 backdrop-blur-xl overflow-hidden shadow-2xl">
       <div className="p-6 border-b border-slate-800/60 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">
           {isEs ? 'Agenda de Hoy' : "Today's Schedule"}
@@ -89,18 +94,20 @@ export function UpcomingAppointments({ appointments, isLoading, searchTerm }: Up
                 if(apt.status === 'pending') color = 'amber';
                 if(apt.status === 'cancelled') color = 'rose';
 
-                const initials = apt.patient_name 
-                  ? apt.patient_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
-                  : '??';
+                const fullName = `${apt.patients?.first_name || ''} ${apt.patients?.last_name || ''}`.trim() || 'Unknown';
+                const initials = fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
                 return (
                   <tr key={apt.id} className="hover:bg-slate-800/30 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white shadow-inner mr-3 group-hover:ring-2 ring-slate-700 transition-all">
+                      <div 
+                        className="flex items-center cursor-pointer group/patient"
+                        onClick={() => setSelectedPatientId(apt.patient_id)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white shadow-inner mr-3 group-hover/patient:ring-2 ring-blue-500 transition-all">
                           {initials}
                         </div>
-                        <span className="font-medium text-slate-200">{apt.patient_name}</span>
+                        <span className="font-medium text-slate-200 group-hover/patient:text-blue-400 transition-colors underline-offset-4 group-hover/patient:underline">{fullName}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-300 font-medium">
@@ -122,6 +129,13 @@ export function UpcomingAppointments({ appointments, isLoading, searchTerm }: Up
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+      <PatientSlideOver 
+        isOpen={!!selectedPatientId} 
+        onClose={() => setSelectedPatientId(null)} 
+        patientId={selectedPatientId}
+        appointments={appointments}
+      />
+    </>
   );
 }

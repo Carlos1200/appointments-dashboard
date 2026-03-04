@@ -5,6 +5,7 @@ import { Search, Filter } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { DashboardStats } from '@/components/DashboardStats';
 import { UpcomingAppointments } from '@/components/UpcomingAppointments';
+import { DashboardCharts } from '@/components/DashboardCharts';
 import { useAppointments } from '@/hooks/useAppointments';
 
 interface DashboardClientProps {
@@ -54,6 +55,7 @@ export function DashboardClient({ greeting, description }: DashboardClientProps)
       </div>
 
       <DashboardStats appointments={todayAppointments} />
+      <DashboardCharts appointments={allAppointments} />
       <UpcomingAppointments 
         appointments={todayAppointments} 
         isLoading={isLoading} 

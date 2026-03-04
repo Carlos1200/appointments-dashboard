@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { sileo } from 'sileo';
 import { useCreateAppointment } from '@/hooks/useAppointments';
+import { usePatients, useCreatePatient } from '@/hooks/usePatients';
 
 interface CreateAppointmentModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ interface CreateAppointmentModalProps {
 export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppointmentModalProps) {
   const isEs = locale === 'es';
   const { mutateAsync: createAppointment, status } = useCreateAppointment();
+  const { data: patients = [] } = usePatients();
+  const { mutateAsync: createPatient } = useCreatePatient();
   const isSubmitting = status === 'pending';
 
   const [formData, setFormData] = useState({
@@ -26,24 +29,46 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
     notes: ''
   });
 
+  // Derived state to check if patient exists by phone
+  const existingPatient = patients.find(p => p.phone === formData.phone);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let finalPatientId = existingPatient?.id;
+
+      // If patient doesn't exist, create it first under the hood
+      if (!finalPatientId) {
+        const parts = formData.name.trim().split(' ');
+        const first_name = parts[0];
+        const last_name = parts.slice(1).join(' ') || 'Sin Apellido';
+        
+        const newPat = await createPatient({
+          first_name,
+          last_name,
+          phone: formData.phone,
+          email: null,
+          notes: null
+        });
+        finalPatientId = newPat.id;
+      }
+
       await createAppointment({
-        patient_name: formData.name,
-        patient_phone: formData.phone,
+        patient_id: finalPatientId,
         date: formData.date,
         time: formData.time,
         notes: formData.notes,
         status: 'pending',
+        type: 'consultation',
         source: 'Manual'
-      });
+      } as any); // using as any temporarily to cover the raw interface update
+
       // Cleanup for next open
       setFormData({ name: '', phone: '', date: '', time: '', notes: '' });
       onClose();
     } catch (error) {
       console.error('Error inserting appointment:', error);
-      sileo.error({ title: isEs ? 'Error al guardar la cita. Intenta de nuevo.' : 'Error saving appointment. Try again.' });
+      sileo.error({ title: isEs ? 'Error al guardar. Verifica la conexión.' : 'Error saving. Check connection.' });
     }
   };
 
@@ -96,19 +121,36 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-300 mb-2 flex justify-between">
                       {isEs ? 'Número de Teléfono' : 'Phone Number'}
+                      {existingPatient && (
+                        <span className="text-xs text-blue-400 font-semibold">{isEs ? '¡Paciente Encontrado!' : 'Patient Found!'}</span>
+                      )}
                     </label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                       <input
                         required
                         type="tel"
+                        list="patients-phone-list"
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        onChange={(e) => {
+                          const newPhone = e.target.value;
+                          const found = patients.find(p => p.phone === newPhone);
+                          if(found) {
+                            setFormData({...formData, phone: newPhone, name: `${found.first_name} ${found.last_name}`.trim()});
+                          } else {
+                            setFormData({...formData, phone: newPhone});
+                          }
+                        }}
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                         placeholder="+1 (555) 000-0000"
                       />
+                      <datalist id="patients-phone-list">
+                        {patients.map(p => (
+                          <option key={p.id} value={p.phone}>{p.first_name} {p.last_name}</option>
+                        ))}
+                      </datalist>
                     </div>
                   </div>
                 </div>

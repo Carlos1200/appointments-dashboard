@@ -6,6 +6,7 @@ import { useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { Appointment } from '@/hooks/useAppointments';
 import { AppointmentActions } from './AppointmentActions';
+import { PatientSlideOver } from './PatientSlideOver';
 
 interface AppointmentsTableProps {
   appointments: Appointment[];
@@ -16,6 +17,8 @@ export function AppointmentsTable({ appointments, isLoading }: AppointmentsTable
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  
   const locale = useLocale();
   const isEs = locale === 'es';
   const tStatus = useTranslations('Status');
@@ -50,8 +53,9 @@ export function AppointmentsTable({ appointments, isLoading }: AppointmentsTable
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 backdrop-blur-xl overflow-hidden shadow-2xl relative min-h-[300px]">
-      <div className="p-4 md:p-6 border-b border-slate-800/60 flex flex-col md:flex-row md:items-center gap-4">
+    <>
+      <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 backdrop-blur-xl overflow-hidden shadow-2xl relative min-h-[300px]">
+        <div className="p-4 md:p-6 border-b border-slate-800/60 flex flex-col md:flex-row md:items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
           <input 
@@ -90,8 +94,9 @@ export function AppointmentsTable({ appointments, isLoading }: AppointmentsTable
       {/* Filtering Logic placed here for brevity, mapped in table body below */}
       {(() => {
         const filteredAppointments = appointments.filter(apt => {
+          const fullName = `${apt.patients?.first_name || ''} ${apt.patients?.last_name || ''}`.trim();
           const matchSearch = searchTerm === '' || 
-            apt.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
             apt.date?.includes(searchTerm);
             
           const matchStatus = statusFilter === '' || apt.status === statusFilter;
@@ -140,16 +145,20 @@ export function AppointmentsTable({ appointments, isLoading }: AppointmentsTable
                     if(apt.source === 'RetellAI') srcColor = 'indigo';
                     if(apt.source === 'n8n') srcColor = 'pink';
 
-                    const initials = apt.patient_name ? apt.patient_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : '??';
+                    const fullName = `${apt.patients?.first_name || ''} ${apt.patients?.last_name || ''}`.trim() || 'Unknown';
+                    const initials = fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
 
                     return (
                       <tr key={apt.id} className="hover:bg-slate-800/30 transition-colors group">
                         <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white shadow-inner mr-3 group-hover:ring-2 ring-slate-700 transition-all">
+                          <div 
+                            className="flex items-center cursor-pointer group/patient"
+                            onClick={() => setSelectedPatientId(apt.patient_id)}
+                          >
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white shadow-inner mr-3 group-hover/patient:ring-2 ring-blue-500 transition-all">
                               {initials}
                             </div>
-                            <span className="font-medium text-slate-200">{apt.patient_name}</span>
+                            <span className="font-medium text-slate-200 group-hover/patient:text-blue-400 transition-colors underline-offset-4 group-hover/patient:underline">{fullName}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-400">
@@ -177,5 +186,13 @@ export function AppointmentsTable({ appointments, isLoading }: AppointmentsTable
         );
       })()}
     </div>
+      
+      <PatientSlideOver 
+        isOpen={!!selectedPatientId} 
+        onClose={() => setSelectedPatientId(null)} 
+        patientId={selectedPatientId}
+        appointments={appointments}
+      />
+    </>
   );
 }
