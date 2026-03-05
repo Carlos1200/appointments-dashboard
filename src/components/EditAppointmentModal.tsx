@@ -8,6 +8,8 @@ import { useTranslations } from 'next-intl';
 import { sileo } from 'sileo';
 import { useUpdateAppointment, Appointment } from '@/hooks/useAppointments';
 import { usePatients, useCreatePatient } from '@/hooks/usePatients';
+import { useProfiles } from '@/hooks/useProfiles';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface EditAppointmentModalProps {
   isOpen: boolean;
@@ -20,13 +22,19 @@ export function EditAppointmentModal({ isOpen, onClose, locale, appointment }: E
   const isEs = locale === 'es';
   const { mutateAsync: updateAppointment, status } = useUpdateAppointment();
   const { data: patients = [] } = usePatients();
+  const { data: profiles = [] } = useProfiles();
+  const { data: permissions = [] } = usePermissions();
   const { mutateAsync: createPatient } = useCreatePatient();
   const isSubmitting = status === 'pending';
   const [mounted, setMounted] = useState(false);
 
+  const canManageAll = permissions.includes('manage_all_appointments');
+  const doctors = profiles.filter(p => p.roles?.name === 'Doctor' || p.roles?.name === 'Admin');
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    doctor_id: '',
     date: '',
     time: '',
     notes: ''
@@ -42,6 +50,7 @@ export function EditAppointmentModal({ isOpen, onClose, locale, appointment }: E
       setFormData({
         name: appointment.patients ? `${appointment.patients.first_name} ${appointment.patients.last_name}`.trim() : '',
         phone: appointment.patients?.phone || '',
+        doctor_id: appointment.doctor_id || '',
         date: appointment.date || '',
         // Format time to HH:mm for the select input if needed, though the DB might already store HH:mm
         time: appointment.time?.substring(0, 5) || '',
@@ -79,6 +88,7 @@ export function EditAppointmentModal({ isOpen, onClose, locale, appointment }: E
       await updateAppointment({
         id: appointment.id,
         patient_id: finalPatientId,
+        doctor_id: formData.doctor_id || undefined, // undefined sends null if unset
         date: formData.date,
         time: formData.time,
         notes: formData.notes,
@@ -214,6 +224,27 @@ export function EditAppointmentModal({ isOpen, onClose, locale, appointment }: E
                   </div>
                 </div>
               </div>
+
+              {canManageAll && (
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                      {isEs ? 'Asignar a Doctor' : 'Assign to Doctor'}
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                    <select
+                      value={formData.doctor_id}
+                      onChange={(e) => setFormData({...formData, doctor_id: e.target.value})}
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
+                    >
+                        <option value="">{isEs ? 'Asignar a mí / Sin especificar' : 'Assign to me / Unspecified'}</option>
+                        {doctors.map(doc => (
+                          <option key={doc.id} value={doc.id}>{doc.full_name || 'Doctor sin nombre'} {doc.specialty ? `(${doc.specialty})` : ''}</option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6">
                 <label className="block text-sm font-medium text-slate-300 mb-2">

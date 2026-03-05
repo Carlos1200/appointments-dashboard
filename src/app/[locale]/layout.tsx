@@ -2,7 +2,6 @@ import {NextIntlClientProvider} from 'next-intl';
 import {getMessages, setRequestLocale} from 'next-intl/server';
 import {notFound} from 'next/navigation';
 import {routing} from '@/i18n/routing';
-import {DashboardLayout} from '@/components/DashboardLayout';
 import {QueryProvider} from '@/providers/QueryProvider';
 import { Toaster } from 'sileo';
 import '../globals.css';
@@ -29,9 +28,7 @@ export default async function LocaleLayout({
       <body className="antialiased bg-slate-900 text-white">
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>
-            <DashboardLayout>
-              {children}
-            </DashboardLayout>
+            {children}
             <Toaster position="top-right" />
           </QueryProvider>
         </NextIntlClientProvider>

@@ -7,6 +7,8 @@ import { useTranslations } from 'next-intl';
 import { sileo } from 'sileo';
 import { useCreateAppointment } from '@/hooks/useAppointments';
 import { usePatients, useCreatePatient } from '@/hooks/usePatients';
+import { useProfiles } from '@/hooks/useProfiles';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface CreateAppointmentModalProps {
   isOpen: boolean;
@@ -19,11 +21,17 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
   const { mutateAsync: createAppointment, status } = useCreateAppointment();
   const { data: patients = [] } = usePatients();
   const { mutateAsync: createPatient } = useCreatePatient();
+  const { data: profiles = [] } = useProfiles();
+  const { data: permissions = [] } = usePermissions();
+  
   const isSubmitting = status === 'pending';
+  const canManageAll = permissions.includes('manage_all_appointments');
+  const doctors = profiles.filter(p => p.roles?.name === 'Doctor' || p.roles?.name === 'Admin');
 
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    doctor_id: '',
     date: '',
     time: '',
     notes: ''
@@ -55,6 +63,7 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
 
       await createAppointment({
         patient_id: finalPatientId,
+        doctor_id: formData.doctor_id || undefined,
         date: formData.date,
         time: formData.time,
         notes: formData.notes,
@@ -64,7 +73,7 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
       } as any); // using as any temporarily to cover the raw interface update
 
       // Cleanup for next open
-      setFormData({ name: '', phone: '', date: '', time: '', notes: '' });
+      setFormData({ name: '', phone: '', doctor_id: '', date: '', time: '', notes: '' });
       onClose();
     } catch (error) {
       console.error('Error inserting appointment:', error);
@@ -195,6 +204,27 @@ export function CreateAppointmentModal({ isOpen, onClose, locale }: CreateAppoin
                   </div>
                 </div>
               </div>
+
+              {canManageAll && (
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                      {isEs ? 'Asignar a Doctor' : 'Assign to Doctor'}
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                    <select
+                      value={formData.doctor_id}
+                      onChange={(e) => setFormData({...formData, doctor_id: e.target.value})}
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
+                    >
+                        <option value="">{isEs ? 'Asignar a mí / Sin especificar' : 'Assign to me / Unspecified'}</option>
+                        {doctors.map(doc => (
+                          <option key={doc.id} value={doc.id}>{doc.full_name || 'Doctor sin nombre'} {doc.specialty ? `(${doc.specialty})` : ''}</option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6">
                 <label className="block text-sm font-medium text-slate-300 mb-2">

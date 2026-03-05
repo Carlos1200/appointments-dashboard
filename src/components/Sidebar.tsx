@@ -1,11 +1,13 @@
 'use client';
 
-import { Calendar, LayoutDashboard, Settings, Menu, X } from 'lucide-react';
+import { Calendar, LayoutDashboard, Settings, Menu, X, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { usePathname, Link } from '@/i18n/routing';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { supabase } from '@/lib/supabase/client';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const NAV_ITEMS = [
   { nameKey: 'home', href: '/', icon: LayoutDashboard },
@@ -16,9 +18,23 @@ const NAV_ITEMS = [
 export function Sidebar({ isMobileOpen, setIsMobileOpen }: { isMobileOpen: boolean, setIsMobileOpen: (v: boolean) => void }) {
   const pathname = usePathname();
   const t = useTranslations('Sidebar');
+  const locale = useLocale();
+  const { data: permissions = [] } = usePermissions();
+
+  const isAdmin = permissions.includes('manage_all_appointments');
+
+  const filteredNavItems = NAV_ITEMS.filter(item => {
+    if (item.href === '/settings') return isAdmin;
+    return true;
+  });
 
   const handleLinkClick = () => {
     if (isMobileOpen) setIsMobileOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = `/${locale}/login`;
   };
 
   const navContent = (
@@ -35,8 +51,8 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: { isMobileOpen: boole
       </div>
 
       <nav className="flex-1 px-4 space-y-2">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+        {filteredNavItems.map((item) => {
+          const isActive = pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/');
           const Icon = item.icon;
 
           return (
@@ -64,14 +80,23 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: { isMobileOpen: boole
       </nav>
       
       <div className="p-4 border-t border-slate-800">
-        <div className="flex items-center space-x-3 px-2 py-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-            AD
+        <div className="flex items-center justify-between px-2 py-2">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+              AD
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-slate-200">{t('role')}</span>
+              <span className="text-xs text-slate-500">{t('practice')}</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-slate-200">{t('role')}</span>
-            <span className="text-xs text-slate-500">{t('practice')}</span>
-          </div>
+          <button 
+            onClick={handleLogout}
+            className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+            title={locale === 'es' ? 'Cerrar Sesión' : 'Log out'}
+          >
+            <LogOut size={18} />
+          </button>
         </div>
       </div>
     </div>

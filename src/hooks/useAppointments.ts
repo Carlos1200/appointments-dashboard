@@ -7,6 +7,7 @@ import { dispatchWebhook } from '@/lib/n8n/webhook';
 export interface Appointment {
   id: string;
   patient_id: string;
+  doctor_id?: string;
   // Make patient data available after joined queries
   patients?: Patient;
   date: string;
@@ -20,14 +21,19 @@ export interface Appointment {
 
 export interface CreateAppointmentDTO {
   patient_id: string;
+  doctor_id?: string;
   date: string;
   time: string;
   notes?: string;
+  status?: string;
+  type?: string;
+  source?: string;
 }
 
 export interface UpdateAppointmentDTO {
   id: string;
   patient_id?: string;
+  doctor_id?: string;
   date?: string;
   time?: string;
   notes?: string;

@@ -13,8 +13,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend
 } from 'recharts';
 import { Appointment } from '@/hooks/useAppointments';
+import { useProfiles } from '@/hooks/useProfiles';
 
 interface DashboardChartsProps {
   appointments: Appointment[];
@@ -30,6 +32,7 @@ const SOURCE_COLORS: Record<string, string> = {
 export function DashboardCharts({ appointments }: DashboardChartsProps) {
   const locale = useLocale();
   const isEs = locale === 'es';
+  const { data: profiles = [] } = useProfiles();
 
   // 1. Process Data for Source Pie Chart
   const sourceData = useMemo(() => {
@@ -78,6 +81,34 @@ export function DashboardCharts({ appointments }: DashboardChartsProps) {
       })
       .sort((a, b) => a.rawHour.localeCompare(b.rawHour));
   }, [appointments]);
+
+  // 3. Process Data for Appointments by Doctor
+  const doctorData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    appointments.forEach((apt) => {
+      let doctorName = isEs ? 'Sin Asignar' : 'Unassigned';
+      if (apt.doctor_id) {
+        const doc = profiles.find(p => p.id === apt.doctor_id);
+        if (doc?.full_name) {
+          doctorName = doc.full_name;
+        } else {
+          doctorName = isEs ? 'Doctor Desconocido' : 'Unknown Doctor';
+        }
+      }
+      counts[doctorName] = (counts[doctorName] || 0) + 1;
+    });
+
+    // Generate colors dynamically for each doctor or use a palette
+    const DOCTOR_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+    
+    return Object.entries(counts)
+      .map(([name, count], index) => ({
+        name,
+        count,
+        fill: DOCTOR_COLORS[index % DOCTOR_COLORS.length]
+      }))
+      .sort((a, b) => b.count - a.count); // Most appointments first
+  }, [appointments, profiles, isEs]);
 
   // Custom generic Tooltip Content for dark theme
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -182,6 +213,52 @@ export function DashboardCharts({ appointments }: DashboardChartsProps) {
                 {/* Dynamically coloring bars to create a gradient effect instead of plain blue */}
                 {hoursData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.count > 0 ? '#3b82f6' : '#1e293b'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Appointments by Doctor Chart */}
+      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-xl shadow-lg relative overflow-hidden group lg:col-span-2">
+         <div className="absolute inset-0 bg-gradient-to-t from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <h3 className="text-lg font-semibold text-white mb-6">
+          {isEs ? 'Citas por Especialista' : 'Appointments by Specialist'}
+        </h3>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={doctorData}
+              layout="vertical"
+              margin={{ top: 0, right: 30, left: 40, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
+              <XAxis 
+                type="number"
+                stroke="#64748b" 
+                fontSize={12} 
+                tickLine={false} 
+                axisLine={false} 
+                allowDecimals={false}
+              />
+              <YAxis 
+                type="category"
+                dataKey="name" 
+                stroke="#cbd5e1" 
+                fontSize={13} 
+                tickLine={false} 
+                axisLine={false}
+                width={120}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#1e293b', opacity: 0.4 }} />
+              <Bar 
+                dataKey="count" 
+                radius={[0, 4, 4, 0]}
+                maxBarSize={40}
+              >
+                {doctorData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Bar>
             </BarChart>

@@ -7,15 +7,32 @@ import { AppointmentsTable } from '@/components/AppointmentsTable';
 import { CalendarView } from '@/components/CalendarView';
 import { useLocale } from 'next-intl';
 import { useAppointments } from '@/hooks/useAppointments';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useProfiles } from '@/hooks/useProfiles';
 
 export default function AppointmentsPage() {
   const locale = useLocale();
   const isEs = locale === 'es';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [selectedDoctor, setSelectedDoctor] = useState('all');
   
   // React Query Fetcher (Cache, Stale time & Refetching managed automatically)
-  const { data: appointments = [], isLoading } = useAppointments();
+  const { data: rawAppointments = [], isLoading } = useAppointments();
+  
+  // RBAC checks for Doctor Filtering
+  const { data: permissions = [] } = usePermissions();
+  const { data: profiles = [] } = useProfiles();
+  const canManageAll = permissions.includes('manage_all_appointments');
+  const doctors = profiles.filter(p => p.roles?.name === 'Doctor' || p.roles?.name === 'Admin');
+
+  // Filter appointments if a specific doctor is selected (Only applies if canManageAll is true)
+  const appointments = (canManageAll && selectedDoctor !== 'all') 
+    ? rawAppointments.filter(apt => {
+        if (selectedDoctor === 'unassigned') return !apt.doctor_id;
+        return apt.doctor_id === selectedDoctor;
+    })
+    : rawAppointments;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -56,6 +73,22 @@ export default function AppointmentsPage() {
               {isEs ? 'Calendario' : 'Calendar'}
             </button>
           </div>
+
+          {canManageAll && (
+              <div className="relative">
+                <select
+                  value={selectedDoctor}
+                  onChange={(e) => setSelectedDoctor(e.target.value)}
+                  className="px-4 py-2 bg-slate-950/50 border border-slate-800 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-200 w-full sm:w-auto appearance-none cursor-pointer"
+                >
+                  <option value="all">{isEs ? 'Todos los Doctores' : 'All Doctors'}</option>
+                  <option value="unassigned">{isEs ? 'Sin Asignar' : 'Unassigned'}</option>
+                  {doctors.map(doc => (
+                      <option key={doc.id} value={doc.id}>{doc.full_name || 'Dr.'}</option>
+                  ))}
+                </select>
+              </div>
+          )}
 
           <button
             onClick={() => setIsModalOpen(true)}
